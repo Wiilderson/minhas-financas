@@ -118,14 +118,30 @@ function waitForGsi(timeoutMs = 8000): Promise<void> {
   })
 }
 
-function requestToken(prompt: '' | 'none' | 'consent'): Promise<string> {
+function requestToken(prompt: '' | 'none' | 'consent', timeoutMs = 8000): Promise<string> {
   if (!tokenClient) {
     tokenClient = initTokenClient()
   }
 
   return new Promise((resolve, reject) => {
-    pendingResolve = resolve
-    pendingReject = reject
+    let settled = false
+
+    const finish = (fn: () => void) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      pendingResolve = null
+      pendingReject = null
+      fn()
+    }
+
+    const timer = setTimeout(() => {
+      finish(() => reject(new Error('Tempo esgotado ao conectar com o Google.')))
+    }, timeoutMs)
+
+    pendingResolve = (token) => finish(() => resolve(token))
+    pendingReject = (err) => finish(() => reject(err))
+
     tokenClient!.requestAccessToken({ prompt })
   })
 }
@@ -141,8 +157,8 @@ export async function tryRestoreSession(): Promise<string | null> {
   if (!getClientId()) return null
 
   try {
-    await waitForGsi()
-    return await requestToken('none')
+    await waitForGsi(5000)
+    return await requestToken('none', 4000)
   } catch {
     return null
   }

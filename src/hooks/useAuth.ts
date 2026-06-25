@@ -18,7 +18,7 @@ export function useAuth() {
 
   useEffect(() => {
     if (!getClientId()) {
-      setError('Configure VITE_GOOGLE_CLIENT_ID no arquivo .env')
+      setError('Configure VITE_GOOGLE_CLIENT_ID nas variáveis de ambiente do deploy.')
       setIsBootstrapping(false)
       return
     }
@@ -26,18 +26,16 @@ export function useAuth() {
     let cancelled = false
 
     async function bootstrap() {
-      if (hasStoredSession() || getAccessToken()) {
-        if (!cancelled) {
-          setIsAuthenticated(true)
-          setIsBootstrapping(false)
+      try {
+        if (hasStoredSession() || getAccessToken()) {
+          if (!cancelled) setIsAuthenticated(true)
+          return
         }
-        return
-      }
 
-      const token = await tryRestoreSession()
-      if (!cancelled) {
-        setIsAuthenticated(!!token)
-        setIsBootstrapping(false)
+        const token = await tryRestoreSession()
+        if (!cancelled) setIsAuthenticated(!!token)
+      } finally {
+        if (!cancelled) setIsBootstrapping(false)
       }
     }
 
